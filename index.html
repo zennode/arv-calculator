@@ -351,8 +351,14 @@ header h1 span { color: var(--primary); }
       <button class="toggle-btn" data-field="subj-central-air" onclick="toggleBtn(this)">Central Air</button>
     </div>
 
-    <div class="note-box">
-      <strong>Find Comps:</strong> Enter the address above, then click a link below to search for recent sales nearby.
+    <div style="margin-top:16px;">
+      <button class="btn btn-success btn-block" onclick="fetchComps()" id="fetch-comps-btn" style="font-size:1rem;padding:14px;">
+        Auto-Fetch Comps
+      </button>
+      <div id="fetch-status" class="text-center text-muted mt-12" style="display:none;"></div>
+    </div>
+    <div class="note-box" style="margin-top:12px;">
+      <strong>Or find comps manually:</strong> Click a link below to search for recent sales nearby, then enter them in Step 2.
     </div>
     <div class="search-links" id="search-links">
       <a href="#" class="zillow" onclick="openCompSearch('zillow')" target="_blank">Zillow</a>
@@ -480,10 +486,64 @@ header h1 span { color: var(--primary); }
 <!-- Settings -->
 <div class="section" id="settings-section">
   <div class="section-header collapsed" onclick="toggleSection(this)">
-    <div>Adjustment Settings (Western MA Defaults)</div>
+    <div>Settings</div>
     <span class="chevron" style="transform:rotate(-90deg)">&#9660;</span>
   </div>
   <div class="section-body collapsed">
+    <h4 style="margin-bottom:8px;font-size:0.95rem;">Auto-Fetch Comps (RentCast API)</h4>
+    <div class="note-box mb-8">
+      Sign up free at <a href="https://rentcast.io" target="_blank">rentcast.io</a> (50 lookups/month). Paste your API key below. A proxy URL is needed because browser security blocks direct API calls — see setup instructions.
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>RentCast API Key</label>
+        <input type="password" id="api-key" placeholder="Paste your RentCast API key" onchange="saveApiSettings()">
+      </div>
+      <div class="form-group" style="flex:2">
+        <label>Proxy URL <span style="font-weight:400;text-transform:none">(your Cloudflare Worker)</span></label>
+        <input type="text" id="proxy-url" placeholder="https://your-worker.your-subdomain.workers.dev" onchange="saveApiSettings()">
+      </div>
+    </div>
+    <details style="margin-bottom:16px;font-size:0.85rem;">
+      <summary style="cursor:pointer;font-weight:600;color:var(--info);">How to set up the free proxy (5 min)</summary>
+      <ol style="padding-left:20px;margin-top:8px;line-height:1.8">
+        <li>Go to <a href="https://dash.cloudflare.com/sign-up" target="_blank">dash.cloudflare.com</a> and create a free account</li>
+        <li>Click <strong>Workers & Pages</strong> → <strong>Create</strong> → <strong>Create Worker</strong></li>
+        <li>Name it <code>arv-proxy</code>, click <strong>Deploy</strong>, then <strong>Edit Code</strong></li>
+        <li>Replace all the code with:<br>
+<pre style="background:#1a1a2e;color:#f5e6b8;padding:12px;border-radius:6px;overflow-x:auto;margin:8px 0;font-size:0.8rem;">export default {
+  async fetch(request, env) {
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET',
+        'Access-Control-Allow-Headers': '*',
+      }});
+    }
+    const url = new URL(request.url);
+    const apiKey = url.searchParams.get('key');
+    const endpoint = url.searchParams.get('endpoint');
+    const params = url.searchParams.get('params');
+    const r = await fetch(
+      'https://api.rentcast.io/v1/' + endpoint + '?' + params,
+      { headers: { 'X-Api-Key': apiKey } }
+    );
+    return new Response(await r.text(), {
+      status: r.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      }
+    });
+  }
+}</pre>
+        </li>
+        <li>Click <strong>Save and Deploy</strong></li>
+        <li>Copy the worker URL (looks like <code>https://arv-proxy.yourname.workers.dev</code>) and paste it above</li>
+      </ol>
+    </details>
+    <hr style="border:none;border-top:1px solid var(--light-gray);margin:16px 0;">
+    <h4 style="margin-bottom:8px;font-size:0.95rem;">Adjustment Values (Western MA Defaults)</h4>
     <div class="note-box mb-8">These values control how comp differences translate to dollar adjustments. Defaults are calibrated for western MA residential properties.</div>
     <div class="form-row">
       <div class="form-group"><label>$/Sq Ft</label><input type="number" id="adj-sqft" value="65"></div>
@@ -1378,6 +1438,206 @@ function resetAll() {
   window.location.hash = '';
   window.location.reload();
 }
+
+// ============ API SETTINGS ============
+function saveApiSettings() {
+  try {
+    localStorage.setItem('arv_api_key', document.getElementById('api-key').value);
+    localStorage.setItem('arv_proxy_url', document.getElementById('proxy-url').value);
+    showToast('Settings saved');
+  } catch(e) {}
+}
+
+function loadApiSettings() {
+  try {
+    const key = localStorage.getItem('arv_api_key');
+    const proxy = localStorage.getItem('arv_proxy_url');
+    if (key) document.getElementById('api-key').value = key;
+    if (proxy) document.getElementById('proxy-url').value = proxy;
+  } catch(e) {}
+}
+
+// ============ AUTO-FETCH COMPS ============
+async function fetchComps() {
+  const address = document.getElementById('subj-address').value.trim();
+  if (!address) { showToast('Enter the subject property address first'); return; }
+
+  const apiKey = document.getElementById('api-key').value.trim();
+  const proxyUrl = document.getElementById('proxy-url').value.trim();
+
+  if (!apiKey) {
+    showToast('Add your RentCast API key in Settings below');
+    // Open settings section
+    const settingsHeader = document.querySelector('#settings-section .section-header');
+    if (settingsHeader.classList.contains('collapsed')) settingsHeader.click();
+    document.getElementById('api-key').focus();
+    return;
+  }
+
+  const btn = document.getElementById('fetch-comps-btn');
+  const status = document.getElementById('fetch-status');
+  btn.disabled = true;
+  btn.textContent = 'Fetching comps...';
+  status.style.display = 'block';
+  status.innerHTML = 'Looking up property and nearby sales...';
+
+  try {
+    // Step 1: Fetch property details + value estimate with comps
+    const propertyData = await callRentCast(apiKey, proxyUrl, 'avm/value', `address=${encodeURIComponent(address)}&compCount=6`);
+
+    if (propertyData.error || propertyData.message) {
+      throw new Error(propertyData.message || propertyData.error || 'API returned an error');
+    }
+
+    // Auto-fill subject property details if available
+    if (propertyData) {
+      autoFillSubject(propertyData);
+    }
+
+    // Step 2: Also try the comparables endpoint for more detailed comp data
+    let compsData = null;
+    try {
+      compsData = await callRentCast(apiKey, proxyUrl, 'avm/rent/comparables', `address=${encodeURIComponent(address)}&limit=6&status=Sold`);
+    } catch(e) {
+      // Comparables endpoint might not be available on free tier, that's ok
+    }
+
+    // Use comps from the value estimate (they come with the AVM response)
+    const comps = propertyData.comparables || (compsData && compsData.comparables) || [];
+
+    if (comps.length === 0) {
+      status.innerHTML = '<span style="color:var(--danger)">No comparable sales found for this address. Try a different address or enter comps manually.</span>';
+      btn.disabled = false;
+      btn.textContent = 'Auto-Fetch Comps';
+      return;
+    }
+
+    // Step 3: Populate comp cards
+    populateComps(comps);
+
+    status.innerHTML = `<span style="color:var(--success)">Found ${comps.length} comparable sale${comps.length > 1 ? 's' : ''}! Review and adjust below, then Calculate ARV.</span>`;
+    showToast(`${comps.length} comps loaded!`);
+
+    // Scroll to comps section
+    document.getElementById('comps-section').scrollIntoView({ behavior: 'smooth' });
+
+  } catch (err) {
+    console.error('Fetch comps error:', err);
+    let msg = err.message || 'Unknown error';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS')) {
+      if (!proxyUrl) {
+        msg = 'Direct API call blocked by browser (CORS). Set up the free Cloudflare Worker proxy in Settings below.';
+        const settingsHeader = document.querySelector('#settings-section .section-header');
+        if (settingsHeader.classList.contains('collapsed')) settingsHeader.click();
+      } else {
+        msg = 'Could not reach the proxy. Check your proxy URL in Settings.';
+      }
+    }
+    status.innerHTML = `<span style="color:var(--danger)">${msg}</span>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Auto-Fetch Comps';
+}
+
+async function callRentCast(apiKey, proxyUrl, endpoint, params) {
+  let url;
+  if (proxyUrl) {
+    // Use proxy
+    const base = proxyUrl.replace(/\/+$/, '');
+    url = `${base}/?key=${encodeURIComponent(apiKey)}&endpoint=${encodeURIComponent(endpoint)}&params=${encodeURIComponent(params)}`;
+  } else {
+    // Try direct (may fail due to CORS)
+    url = `https://api.rentcast.io/v1/${endpoint}?${params}`;
+  }
+
+  const headers = {};
+  if (!proxyUrl) {
+    headers['X-Api-Key'] = apiKey;
+  }
+
+  const response = await fetch(url, { headers });
+  if (!response.ok) {
+    const text = await response.text();
+    try {
+      const err = JSON.parse(text);
+      throw new Error(err.message || err.error || `API error (${response.status})`);
+    } catch(e) {
+      if (e.message.includes('API error') || e.message.includes('message')) throw e;
+      throw new Error(`API error (${response.status}): ${text.substring(0, 200)}`);
+    }
+  }
+  return response.json();
+}
+
+function autoFillSubject(data) {
+  // RentCast returns property details at the top level
+  if (data.squareFootage) setInputVal('subj-sqft', data.squareFootage);
+  if (data.bedrooms) setInputVal('subj-beds', data.bedrooms);
+  if (data.bathrooms) setInputVal('subj-fullbath', Math.floor(data.bathrooms));
+  if (data.bathrooms && data.bathrooms % 1 >= 0.5) setInputVal('subj-halfbath', 1);
+  if (data.yearBuilt) setInputVal('subj-year', data.yearBuilt);
+  if (data.lotSize) setInputVal('subj-lot', data.lotSize);
+
+  // Property type / style
+  if (data.propertyType) {
+    const typeMap = { 'Single Family': 'colonial', 'Condo': 'other', 'Townhouse': 'other', 'Multi-Family': 'multi' };
+    const style = typeMap[data.propertyType] || 'other';
+    document.getElementById('subj-style').value = style;
+  }
+}
+
+function populateComps(apiComps) {
+  // Ensure we have enough comp cards
+  while (compCount < Math.min(apiComps.length, 6)) addComp();
+
+  apiComps.slice(0, 6).forEach((comp, i) => {
+    const idx = i + 1;
+
+    // Address
+    const addr = comp.formattedAddress || comp.address ||
+      [comp.addressLine1, comp.city, comp.state, comp.zipCode].filter(Boolean).join(', ');
+    setInputVal(`c${idx}-address`, addr);
+
+    // Sale price
+    const price = comp.price || comp.lastSalePrice || comp.salePrice || comp.correlation?.salePrice;
+    if (price) setInputVal(`c${idx}-price`, price);
+
+    // Sale date
+    const date = comp.lastSaleDate || comp.saleDate || comp.correlation?.saleDate;
+    if (date) {
+      const d = new Date(date);
+      if (!isNaN(d)) {
+        document.getElementById(`c${idx}-date`).value = d.toISOString().split('T')[0];
+      }
+    }
+
+    // Distance
+    if (comp.distance !== undefined) setInputVal(`c${idx}-dist`, Math.round(comp.distance * 10) / 10);
+
+    // Property details
+    if (comp.squareFootage) setInputVal(`c${idx}-sqft`, comp.squareFootage);
+    if (comp.bedrooms) setInputVal(`c${idx}-beds`, comp.bedrooms);
+    if (comp.bathrooms) setInputVal(`c${idx}-fullbath`, Math.floor(comp.bathrooms));
+    if (comp.bathrooms && comp.bathrooms % 1 >= 0.5) setInputVal(`c${idx}-halfbath`, 1);
+    if (comp.yearBuilt) setInputVal(`c${idx}-year`, comp.yearBuilt);
+    if (comp.lotSize) setInputVal(`c${idx}-lot`, comp.lotSize);
+
+    // Default condition based on year and sale price data
+    // Assume recently sold = at least good condition
+    const condition = comp.condition || '4';
+    document.getElementById(`c${idx}-condition`).value = condition;
+
+    // Default reno status to 'updated' — user should verify
+    document.getElementById(`c${idx}-reno`).value = 'updated';
+
+    // Update status badge
+    updateCompStatus(idx);
+  });
+}
+
+// Load API settings on page init
+document.addEventListener('DOMContentLoaded', () => { loadApiSettings(); });
 </script>
 </body>
 </html>

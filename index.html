@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YellowBrick ARV Analyzer</title>
+<style>
+:root {
+  --primary: #d4a017;
+  --primary-dark: #b8860b;
+  --primary-light: #f5e6b8;
+  --danger: #dc3545;
+  --success: #28a745;
+  --warning: #ffc107;
+  --info: #17a2b8;
+  --dark: #1a1a2e;
+  --gray: #6c757d;
+  --light-gray: #e9ecef;
+  --bg: #f8f9fa;
+  --card-bg: #ffffff;
+  --text: #212529;
+  --text-muted: #6c757d;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --radius: 10px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--text);
+  line-height: 1.5; padding-bottom: 80px;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 0 16px; }
+header {
+  background: var(--dark); color: white; padding: 16px 0;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+header .container { display: flex; align-items: center; justify-content: space-between; }
+header h1 { font-size: 1.2rem; font-weight: 700; }
+header h1 span { color: var(--primary); }
+.header-actions { display: flex; gap: 8px; }
+.header-actions button {
+  background: transparent; border: 1px solid rgba(255,255,255,0.3);
+  color: white; padding: 6px 12px; border-radius: 6px;
+  font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
+}
+.header-actions button:hover { background: rgba(255,255,255,0.1); }
+
+.section {
+  background: var(--card-bg); border-radius: var(--radius);
+  box-shadow: var(--shadow); margin: 16px 0; overflow: hidden;
+}
+.section-header {
+  background: var(--dark); color: white; padding: 12px 16px;
+  font-weight: 600; font-size: 0.95rem;
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; user-select: none;
+}
+.section-header .step-num {
+  background: var(--primary); color: var(--dark);
+  width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700; margin-right: 8px;
+}
+.section-header .chevron { transition: transform 0.2s; font-size: 1.2rem; }
+.section-header.collapsed .chevron { transform: rotate(-90deg); }
+.section-body { padding: 16px; }
+.section-body.collapsed { display: none; }
+
+.form-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.form-group { flex: 1; min-width: 120px; }
+.form-group label {
+  display: block; font-size: 0.8rem; font-weight: 600;
+  color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.form-group input, .form-group select {
+  width: 100%; padding: 10px 12px; border: 1px solid #ddd;
+  border-radius: 6px; font-size: 1rem; transition: border-color 0.2s;
+  background: white;
+}
+.form-group input:focus, .form-group select:focus {
+  outline: none; border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+.form-group input[type="number"] { -moz-appearance: textfield; }
+.form-group input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.toggle-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.toggle-btn {
+  padding: 8px 16px; border: 2px solid #ddd; border-radius: 20px;
+  background: white; cursor: pointer; font-size: 0.85rem;
+  transition: all 0.2s; font-weight: 500;
+}
+.toggle-btn.active { border-color: var(--primary); background: var(--primary-light); color: var(--dark); }
+
+.comp-card {
+  border: 2px solid var(--light-gray); border-radius: var(--radius);
+  margin-bottom: 12px; overflow: hidden; transition: border-color 0.2s;
+}
+.comp-card.filled { border-color: var(--primary); }
+.comp-header {
+  padding: 10px 16px; background: var(--light-gray);
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; font-weight: 600; font-size: 0.9rem;
+}
+.comp-header .comp-status {
+  font-size: 0.75rem; padding: 2px 8px; border-radius: 10px;
+  font-weight: 500;
+}
+.comp-status.empty { background: #f0f0f0; color: var(--gray); }
+.comp-status.filled { background: var(--primary-light); color: var(--primary-dark); }
+.comp-body { padding: 12px 16px; }
+.comp-body.hidden { display: none; }
+
+.btn {
+  padding: 12px 24px; border: none; border-radius: 8px;
+  font-size: 1rem; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary { background: var(--primary); color: var(--dark); }
+.btn-primary:hover { background: var(--primary-dark); color: white; }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #218838; }
+.btn-info { background: var(--info); color: white; }
+.btn-info:hover { background: #138496; }
+.btn-outline {
+  background: transparent; border: 2px solid var(--primary);
+  color: var(--primary-dark);
+}
+.btn-outline:hover { background: var(--primary-light); }
+.btn-sm { padding: 6px 14px; font-size: 0.85rem; }
+.btn-block { width: 100%; justify-content: center; }
+
+.search-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.search-links a {
+  padding: 8px 16px; border-radius: 20px; text-decoration: none;
+  font-size: 0.85rem; font-weight: 600; transition: all 0.2s;
+}
+.search-links a.zillow { background: #006aff; color: white; }
+.search-links a.redfin { background: #a02021; color: white; }
+.search-links a.realtor { background: #d92228; color: white; }
+.search-links a:hover { opacity: 0.85; transform: translateY(-1px); }
+
+/* Results */
+.results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.result-card {
+  background: var(--bg); border-radius: 8px; padding: 16px; text-align: center;
+  border: 2px solid transparent;
+}
+.result-card.highlight { border-color: var(--primary); background: var(--primary-light); }
+.result-card .label { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; }
+.result-card .value { font-size: 1.8rem; font-weight: 700; color: var(--dark); margin: 4px 0; }
+.result-card .sub { font-size: 0.8rem; color: var(--text-muted); }
+.result-card.highlight .value { color: var(--primary-dark); }
+
+/* Adjustment Table */
+.adj-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; overflow-x: auto; display: block; }
+.adj-table th, .adj-table td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--light-gray); white-space: nowrap; }
+.adj-table th { background: var(--dark); color: white; font-weight: 600; position: sticky; top: 0; }
+.adj-table th:first-child, .adj-table td:first-child { text-align: left; font-weight: 600; }
+.adj-table tr:hover { background: var(--primary-light); }
+.adj-positive { color: var(--success); }
+.adj-negative { color: var(--danger); }
+.adj-warning { background: #fff3cd !important; }
+.adj-table .total-row { font-weight: 700; border-top: 3px solid var(--dark); background: var(--bg); }
+
+/* Rehab Section */
+.rehab-category { margin-bottom: 16px; }
+.rehab-category h4 { font-size: 0.9rem; font-weight: 700; color: var(--dark); margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid var(--primary); }
+.rehab-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.rehab-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0; }
+.rehab-item .item-name { flex: 1; font-size: 0.9rem; }
+.rehab-item .item-cost {
+  width: 110px; padding: 6px 8px; border: 1px solid #ddd;
+  border-radius: 4px; text-align: right; font-size: 0.9rem;
+}
+.rehab-total {
+  background: var(--dark); color: white; padding: 16px;
+  border-radius: 8px; margin-top: 16px;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 1.1rem; font-weight: 700;
+}
+
+/* MAO */
+.mao-calc {
+  background: linear-gradient(135deg, var(--dark) 0%, #16213e 100%);
+  color: white; border-radius: var(--radius); padding: 24px;
+  margin-top: 16px;
+}
+.mao-calc h3 { margin-bottom: 16px; font-size: 1.1rem; }
+.mao-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.95rem; }
+.mao-row.final { font-size: 1.4rem; font-weight: 700; color: var(--primary); border-top: 2px solid var(--primary); border-bottom: none; padding-top: 12px; margin-top: 8px; }
+.mao-input {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+  color: white; padding: 4px 8px; border-radius: 4px; width: 60px;
+  text-align: center; font-size: 0.95rem;
+}
+
+/* Share */
+.share-bar {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; padding-top: 16px;
+  border-top: 1px solid var(--light-gray);
+}
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--dark); color: white; padding: 12px 24px;
+  border-radius: 8px; font-size: 0.9rem; z-index: 1000;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+/* Print */
+@media print {
+  header, .header-actions, .search-links, .btn, .share-bar, .toggle-btn,
+  .section-header .chevron, .no-print { display: none !important; }
+  body { padding: 0; background: white; }
+  .section { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+  .section-body.collapsed { display: block !important; }
+  .mao-calc { color: black; background: #f0f0f0 !important; }
+  .mao-calc .mao-row.final { color: black; }
+}
+@media (max-width: 600px) {
+  .form-group { min-width: 100px; }
+  .result-card .value { font-size: 1.4rem; }
+  .adj-table { font-size: 0.75rem; }
+  .adj-table th, .adj-table td { padding: 6px; }
+}
+.hidden { display: none !important; }
+.mt-12 { margin-top: 12px; }
+.mb-8 { margin-bottom: 8px; }
+.text-center { text-align: center; }
+.text-muted { color: var(--text-muted); font-size: 0.85rem; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+.badge-warning { background: #fff3cd; color: #856404; }
+.badge-danger { background: #f8d7da; color: #721c24; }
+.badge-success { background: #d4edda; color: #155724; }
+.note-box {
+  background: #fff8e1; border-left: 4px solid var(--warning);
+  padding: 12px 16px; border-radius: 0 6px 6px 0;
+  font-size: 0.85rem; margin: 12px 0;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1><span>YellowBrick</span> ARV Analyzer</h1>
+    <div class="header-actions">
+      <button onclick="resetAll()">New</button>
+      <button onclick="printReport()">Print</button>
+      <button onclick="shareAnalysis()">Share</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- STEP 1: Subject Property -->
+<div class="section" id="subject-section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div><span class="step-num">1</span> Subject Property</div>
+    <span class="chevron">&#9660;</span>
+  </div>
+  <div class="section-body">
+    <div class="form-row">
+      <div class="form-group" style="flex:3">
+        <label>Address</label>
+        <input type="text" id="subj-address" placeholder="123 Main St, Springfield, MA">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Sq Ft</label>
+        <input type="number" id="subj-sqft" placeholder="1,200">
+      </div>
+      <div class="form-group">
+        <label>Beds</label>
+        <input type="number" id="subj-beds" placeholder="3">
+      </div>
+      <div class="form-group">
+        <label>Full Baths</label>
+        <input type="number" id="subj-fullbath" placeholder="1">
+      </div>
+      <div class="form-group">
+        <label>Half Baths</label>
+        <input type="number" id="subj-halfbath" placeholder="0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Year Built</label>
+        <input type="number" id="subj-year" placeholder="1950">
+      </div>
+      <div class="form-group">
+        <label>Lot Size (sf)</label>
+        <input type="number" id="subj-lot" placeholder="5,000">
+      </div>
+      <div class="form-group">
+        <label>Stories</label>
+        <select id="subj-stories">
+          <option value="1">1</option>
+          <option value="1.5">1.5</option>
+          <option value="2" selected>2</option>
+          <option value="2.5">2.5</option>
+          <option value="3">3</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Style</label>
+        <select id="subj-style">
+          <option value="colonial">Colonial</option>
+          <option value="cape">Cape Cod</option>
+          <option value="ranch">Ranch</option>
+          <option value="split">Split Level</option>
+          <option value="multi">Multi-Family</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Current Condition</label>
+        <select id="subj-condition">
+          <option value="1">1 — Distressed (gutted, major structural)</option>
+          <option value="2">2 — Poor (needs full rehab, all systems)</option>
+          <option value="3">3 — Fair (livable but dated, needs updates)</option>
+          <option value="4">4 — Good (minor cosmetic updates only)</option>
+          <option value="5">5 — Excellent (move-in ready, fully updated)</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:2">
+        <label>After Repair Condition Target</label>
+        <select id="subj-target-condition">
+          <option value="4">4 — Good (above average finishes)</option>
+          <option value="5" selected>5 — Excellent (top of market finishes)</option>
+        </select>
+      </div>
+    </div>
+    <label style="font-size:0.8rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;display:block;">Features</label>
+    <div class="toggle-row">
+      <button class="toggle-btn" data-field="subj-garage" data-val="0" onclick="cycleToggle(this, ['0','1','2','3'], ['No Garage','1-Car Garage','2-Car Garage','3-Car Garage'])">No Garage</button>
+      <button class="toggle-btn" data-field="subj-basement" data-val="none" onclick="cycleToggle(this, ['none','unfinished','partial','finished'], ['No Basement','Unfinished Basement','Partial Basement','Finished Basement'])">No Basement</button>
+      <button class="toggle-btn" data-field="subj-fireplace" data-val="0" onclick="cycleToggle(this, ['0','1','2'], ['No Fireplace','1 Fireplace','2 Fireplaces'])">No Fireplace</button>
+      <button class="toggle-btn" data-field="subj-central-air" onclick="toggleBtn(this)">Central Air</button>
+    </div>
+
+    <div class="note-box">
+      <strong>Find Comps:</strong> Enter the address above, then click a link below to search for recent sales nearby.
+    </div>
+    <div class="search-links" id="search-links">
+      <a href="#" class="zillow" onclick="openCompSearch('zillow')" target="_blank">Zillow</a>
+      <a href="#" class="redfin" onclick="openCompSearch('redfin')" target="_blank">Redfin</a>
+      <a href="#" class="realtor" onclick="openCompSearch('realtor')" target="_blank">Realtor.com</a>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 2: Comparables -->
+<div class="section" id="comps-section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div><span class="step-num">2</span> Comparable Sales <span id="comp-count" style="font-weight:400;font-size:0.8rem;opacity:0.7">(0 of 6)</span></div>
+    <span class="chevron">&#9660;</span>
+  </div>
+  <div class="section-body">
+    <div class="note-box mb-8">
+      Enter at least 3 comps. Ideally: sold within 6 months, within 1 mile, similar size/style. <strong>Adjust the comp to its SOLD condition</strong> — the engine handles the rest.
+    </div>
+    <div id="comp-cards"></div>
+    <button class="btn btn-outline btn-sm mt-12" onclick="addComp()" id="add-comp-btn">+ Add Comp</button>
+  </div>
+</div>
+
+<!-- STEP 3: Calculate -->
+<div class="section" id="calc-section">
+  <div class="section-body text-center" style="padding:20px;">
+    <button class="btn btn-primary btn-block" onclick="calculateARV()" style="font-size:1.1rem;padding:16px;">
+      Calculate ARV
+    </button>
+  </div>
+</div>
+
+<!-- RESULTS: Adjustment Grid -->
+<div class="section hidden" id="adj-section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div><span class="step-num">3</span> Appraisal Adjustments</div>
+    <span class="chevron">&#9660;</span>
+  </div>
+  <div class="section-body">
+    <div id="adj-warnings"></div>
+    <div style="overflow-x:auto">
+      <table class="adj-table" id="adj-table"></table>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS: ARV Summary -->
+<div class="section hidden" id="arv-section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div><span class="step-num">4</span> After Repair Value</div>
+    <span class="chevron">&#9660;</span>
+  </div>
+  <div class="section-body">
+    <div class="results-grid" id="arv-results"></div>
+    <div id="arv-notes" class="text-muted"></div>
+  </div>
+</div>
+
+<!-- RESULTS: Rehab Scope -->
+<div class="section hidden" id="rehab-section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div><span class="step-num">5</span> Rehab Scope &amp; Costs</div>
+    <span class="chevron">&#9660;</span>
+  </div>
+  <div class="section-body">
+    <div class="note-box mb-8">
+      Pre-filled based on condition gap (current → target). Check/uncheck items and adjust costs to match this specific property. Costs are western MA estimates.
+    </div>
+    <div id="rehab-items"></div>
+    <div class="rehab-total" id="rehab-total">
+      <span>Total Rehab Estimate</span>
+      <span id="rehab-total-val">$0</span>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS: MAO -->
+<div class="section hidden" id="mao-section">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div><span class="step-num">6</span> Maximum Allowable Offer</div>
+    <span class="chevron">&#9660;</span>
+  </div>
+  <div class="section-body">
+    <div class="mao-calc">
+      <h3>Deal Analysis</h3>
+      <div class="mao-row">
+        <span>ARV (Reconciled)</span>
+        <span id="mao-arv">$0</span>
+      </div>
+      <div class="mao-row">
+        <span>× Investor Rule <input type="number" class="mao-input" id="mao-pct" value="70" min="50" max="100" onchange="updateMAO()">%</span>
+        <span id="mao-discounted">$0</span>
+      </div>
+      <div class="mao-row">
+        <span>− Rehab Costs</span>
+        <span id="mao-rehab">$0</span>
+      </div>
+      <div class="mao-row">
+        <span>− Holding Costs (<input type="number" class="mao-input" id="mao-months" value="6" min="1" max="24" onchange="updateMAO()"> mo × <input type="number" class="mao-input" id="mao-monthly" value="1500" onchange="updateMAO()">)</span>
+        <span id="mao-holding">$0</span>
+      </div>
+      <div class="mao-row">
+        <span>− Closing/Selling Costs (<input type="number" class="mao-input" id="mao-closing-pct" value="8" min="0" max="15" onchange="updateMAO()">% of ARV)</span>
+        <span id="mao-closing">$0</span>
+      </div>
+      <div class="mao-row final">
+        <span>MAX OFFER</span>
+        <span id="mao-final">$0</span>
+      </div>
+      <div class="mao-row" style="border:none;padding-top:8px;">
+        <span style="font-size:0.85rem;opacity:0.7;">Estimated Profit at MAO</span>
+        <span id="mao-profit" style="font-size:0.85rem;">$0</span>
+      </div>
+    </div>
+
+    <div class="share-bar no-print">
+      <button class="btn btn-info btn-sm" onclick="shareAnalysis()">Copy Share Link</button>
+      <button class="btn btn-outline btn-sm" onclick="copyReport()">Copy Report</button>
+      <button class="btn btn-outline btn-sm" onclick="printReport()">Print / PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="section" id="settings-section">
+  <div class="section-header collapsed" onclick="toggleSection(this)">
+    <div>Adjustment Settings (Western MA Defaults)</div>
+    <span class="chevron" style="transform:rotate(-90deg)">&#9660;</span>
+  </div>
+  <div class="section-body collapsed">
+    <div class="note-box mb-8">These values control how comp differences translate to dollar adjustments. Defaults are calibrated for western MA residential properties.</div>
+    <div class="form-row">
+      <div class="form-group"><label>$/Sq Ft</label><input type="number" id="adj-sqft" value="65"></div>
+      <div class="form-group"><label>$/Bedroom</label><input type="number" id="adj-bed" value="7500"></div>
+      <div class="form-group"><label>$/Full Bath</label><input type="number" id="adj-fullbath" value="12000"></div>
+      <div class="form-group"><label>$/Half Bath</label><input type="number" id="adj-halfbath" value="5000"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>$/Garage Stall</label><input type="number" id="adj-garage" value="7500"></div>
+      <div class="form-group"><label>$ Fin. Basement</label><input type="number" id="adj-finbsmt" value="20000"></div>
+      <div class="form-group"><label>$/Condition Level</label><input type="number" id="adj-cond" value="10000"></div>
+      <div class="form-group"><label>$/Year Age Diff</label><input type="number" id="adj-age" value="500"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Monthly Appreciation %</label><input type="number" id="adj-appreciation" value="0.4" step="0.1"></div>
+      <div class="form-group"><label>$/Lot Sq Ft</label><input type="number" id="adj-lot" value="2" step="0.5"></div>
+      <div class="form-group"><label>$/Fireplace</label><input type="number" id="adj-fireplace" value="3000"></div>
+      <div class="form-group"><label>$ Central Air</label><input type="number" id="adj-air" value="5000"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- container -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ STATE ============
+let comps = [];
+let compCount = 0;
+let lastResults = null;
+
+// ============ REHAB COST TEMPLATES (Western MA) ============
+const REHAB_ITEMS = {
+  'Exterior': [
+    { name: 'Roof Replacement', cost: 12000, condGap: 2 },
+    { name: 'Siding Repair/Replace', cost: 14000, condGap: 2 },
+    { name: 'Windows (all)', cost: 10000, condGap: 2 },
+    { name: 'Exterior Doors', cost: 3000, condGap: 2 },
+    { name: 'Gutters & Downspouts', cost: 2000, condGap: 2 },
+    { name: 'Exterior Paint/Stain', cost: 5000, condGap: 1 },
+    { name: 'Deck/Porch Repair', cost: 4000, condGap: 2 },
+    { name: 'Landscaping & Grading', cost: 3500, condGap: 1 },
+    { name: 'Driveway/Walkways', cost: 5000, condGap: 2 },
+    { name: 'Foundation Repair', cost: 15000, condGap: 3 },
+  ],
+  'Kitchen': [
+    { name: 'Full Kitchen Remodel', cost: 35000, condGap: 2 },
+    { name: 'Cabinets Only', cost: 12000, condGap: 1 },
+    { name: 'Countertops (granite/quartz)', cost: 5000, condGap: 1 },
+    { name: 'Appliances Package', cost: 4000, condGap: 1 },
+    { name: 'Kitchen Flooring', cost: 2500, condGap: 1 },
+    { name: 'Backsplash', cost: 1500, condGap: 1 },
+  ],
+  'Bathrooms': [
+    { name: 'Full Bath Remodel (each)', cost: 15000, condGap: 2 },
+    { name: 'Half Bath Remodel', cost: 6000, condGap: 2 },
+    { name: 'Vanity/Fixtures Update', cost: 3000, condGap: 1 },
+    { name: 'Tile/Surround', cost: 4000, condGap: 1 },
+  ],
+  'Interior': [
+    { name: 'Interior Paint (whole house)', cost: 5000, condGap: 1 },
+    { name: 'Flooring — Hardwood Refinish', cost: 4500, condGap: 1 },
+    { name: 'Flooring — LVP/New Install', cost: 7000, condGap: 2 },
+    { name: 'Interior Doors & Trim', cost: 3500, condGap: 2 },
+    { name: 'Lighting Fixtures', cost: 2000, condGap: 1 },
+    { name: 'Staircase/Railings', cost: 2500, condGap: 2 },
+    { name: 'Closet Systems', cost: 1500, condGap: 1 },
+  ],
+  'Systems': [
+    { name: 'HVAC Replacement', cost: 12000, condGap: 2 },
+    { name: 'Electrical Panel Upgrade', cost: 3500, condGap: 2 },
+    { name: 'Electrical — Full Rewire', cost: 10000, condGap: 3 },
+    { name: 'Plumbing Updates', cost: 6000, condGap: 2 },
+    { name: 'Water Heater', cost: 2000, condGap: 2 },
+    { name: 'Insulation (attic/walls)', cost: 4000, condGap: 2 },
+  ],
+  'Structural & Other': [
+    { name: 'Framing Repairs', cost: 8000, condGap: 3 },
+    { name: 'Mold Remediation', cost: 5000, condGap: 3 },
+    { name: 'Asbestos Abatement', cost: 6000, condGap: 3 },
+    { name: 'Lead Paint Remediation', cost: 4000, condGap: 3 },
+    { name: 'Permits & Inspections', cost: 3000, condGap: 1 },
+    { name: 'Dumpster/Cleanout', cost: 2500, condGap: 1 },
+    { name: 'Contingency (10%)', cost: 0, condGap: 0 },
+  ]
+};
+
+// ============ INIT ============
+document.addEventListener('DOMContentLoaded', () => {
+  for (let i = 0; i < 3; i++) addComp();
+  loadFromURL();
+});
+
+// ============ UI HELPERS ============
+function toggleSection(header) {
+  header.classList.toggle('collapsed');
+  const body = header.nextElementSibling;
+  body.classList.toggle('collapsed');
+  const chevron = header.querySelector('.chevron');
+  if (chevron) {
+    chevron.style.transform = header.classList.contains('collapsed') ? 'rotate(-90deg)' : '';
+  }
+}
+
+function toggleBtn(el) {
+  el.classList.toggle('active');
+}
+
+function cycleToggle(el, values, labels) {
+  let idx = values.indexOf(el.dataset.val);
+  idx = (idx + 1) % values.length;
+  el.dataset.val = values[idx];
+  el.textContent = labels[idx];
+  el.classList.toggle('active', idx > 0);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function fmt(n) {
+  if (n == null || isNaN(n)) return '$0';
+  return '$' + Math.round(n).toLocaleString();
+}
+
+function fmtAdj(n) {
+  if (!n || n === 0) return '—';
+  const prefix = n > 0 ? '+' : '';
+  return prefix + fmt(n).replace('$','$');
+}
+
+// ============ COMP CARDS ============
+function addComp() {
+  if (compCount >= 6) return;
+  compCount++;
+  const idx = compCount;
+  const card = document.createElement('div');
+  card.className = 'comp-card';
+  card.id = `comp-${idx}`;
+  card.innerHTML = `
+    <div class="comp-header" onclick="toggleCompBody(${idx})">
+      <span>Comp #${idx}</span>
+      <span class="comp-status empty">Empty</span>
+    </div>
+    <div class="comp-body" id="comp-body-${idx}">
+      <div class="form-row">
+        <div class="form-group" style="flex:3">
+          <label>Address</label>
+          <input type="text" id="c${idx}-address" placeholder="456 Oak St, Springfield, MA" oninput="updateCompStatus(${idx})">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Sale Price $</label>
+          <input type="number" id="c${idx}-price" placeholder="285000" oninput="updateCompStatus(${idx})">
+        </div>
+        <div class="form-group">
+          <label>Sale Date</label>
+          <input type="date" id="c${idx}-date">
+        </div>
+        <div class="form-group">
+          <label>Distance (mi)</label>
+          <input type="number" id="c${idx}-dist" step="0.1" placeholder="0.3">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Sq Ft</label>
+          <input type="number" id="c${idx}-sqft" placeholder="1,400">
+        </div>
+        <div class="form-group">
+          <label>Beds</label>
+          <input type="number" id="c${idx}-beds" placeholder="3">
+        </div>
+        <div class="form-group">
+          <label>Full Baths</label>
+          <input type="number" id="c${idx}-fullbath" placeholder="2">
+        </div>
+        <div class="form-group">
+          <label>Half Baths</label>
+          <input type="number" id="c${idx}-halfbath" placeholder="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Year Built</label>
+          <input type="number" id="c${idx}-year" placeholder="1955">
+        </div>
+        <div class="form-group">
+          <label>Lot Size (sf)</label>
+          <input type="number" id="c${idx}-lot" placeholder="6000">
+        </div>
+        <div class="form-group">
+          <label>Condition at Sale</label>
+          <select id="c${idx}-condition">
+            <option value="3">3 — Fair</option>
+            <option value="4">4 — Good</option>
+            <option value="5" selected>5 — Excellent</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Renovation Status</label>
+          <select id="c${idx}-reno">
+            <option value="full">Fully Renovated</option>
+            <option value="partial">Partial Reno</option>
+            <option value="updated">Updated/Maintained</option>
+            <option value="original">Original Condition</option>
+          </select>
+        </div>
+      </div>
+      <div id="c${idx}-reno-details" class="form-row" style="margin-top:-4px">
+        <div class="form-group" style="flex:3">
+          <label>Reno Details (kitchen, baths, systems updated, etc.)</label>
+          <input type="text" id="c${idx}-reno-notes" placeholder="New kitchen & baths 2024, new roof, refinished hardwoods">
+        </div>
+      </div>
+      <div class="toggle-row">
+        <button class="toggle-btn" data-field="c${idx}-garage" data-val="0" onclick="cycleToggle(this, ['0','1','2','3'], ['No Garage','1-Car','2-Car','3-Car'])">No Garage</button>
+        <button class="toggle-btn" data-field="c${idx}-basement" data-val="none" onclick="cycleToggle(this, ['none','unfinished','partial','finished'], ['No Bsmt','Unfin Bsmt','Partial Bsmt','Fin Bsmt'])">No Bsmt</button>
+        <button class="toggle-btn" data-field="c${idx}-fireplace" data-val="0" onclick="cycleToggle(this, ['0','1','2'], ['No FP','1 FP','2 FP'])">No FP</button>
+        <button class="toggle-btn" data-field="c${idx}-central-air" onclick="toggleBtn(this)">Central Air</button>
+      </div>
+    </div>`;
+  document.getElementById('comp-cards').appendChild(card);
+  if (compCount >= 6) document.getElementById('add-comp-btn').classList.add('hidden');
+  updateCompCount();
+}
+
+function toggleCompBody(idx) {
+  const body = document.getElementById(`comp-body-${idx}`);
+  body.classList.toggle('hidden');
+}
+
+function updateCompStatus(idx) {
+  const price = document.getElementById(`c${idx}-price`).value;
+  const addr = document.getElementById(`c${idx}-address`).value;
+  const card = document.getElementById(`comp-${idx}`);
+  const status = card.querySelector('.comp-status');
+  if (price && addr) {
+    card.classList.add('filled');
+    status.className = 'comp-status filled';
+    status.textContent = fmt(parseFloat(price));
+  } else {
+    card.classList.remove('filled');
+    status.className = 'comp-status empty';
+    status.textContent = 'Empty';
+  }
+  updateCompCount();
+}
+
+function updateCompCount() {
+  let filled = 0;
+  for (let i = 1; i <= compCount; i++) {
+    const p = document.getElementById(`c${i}-price`);
+    if (p && p.value) filled++;
+  }
+  document.getElementById('comp-count').textContent = `(${filled} of ${compCount})`;
+}
+
+// ============ SEARCH LINKS ============
+function openCompSearch(site) {
+  const addr = document.getElementById('subj-address').value;
+  if (!addr) { showToast('Enter subject address first'); return; }
+  const parts = addr.split(',').map(s => s.trim());
+  const city = parts[1] || 'Springfield';
+  const state = parts[2] || 'MA';
+  let url = '';
+  if (site === 'zillow') {
+    url = `https://www.zillow.com/homes/recently_sold/${encodeURIComponent(city + ' ' + state)}_rb/`;
+  } else if (site === 'redfin') {
+    url = `https://www.redfin.com/city/${encodeURIComponent(city)}/${encodeURIComponent(state)}/filter/sort=lo-days,status=sold-1yr`;
+  } else if (site === 'realtor') {
+    url = `https://www.realtor.com/realestateandhomes-search/${encodeURIComponent(city)}_${encodeURIComponent(state)}/show-recently-sold`;
+  }
+  window.open(url, '_blank');
+}
+
+// ============ GET VALUES ============
+function getVal(id) { const el = document.getElementById(id); return el ? parseFloat(el.value) || 0 : 0; }
+function getStr(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function getToggle(field) {
+  const btn = document.querySelector(`[data-field="${field}"]`);
+  return btn ? btn.dataset.val : '0';
+}
+function isToggleActive(field) {
+  const btn = document.querySelector(`[data-field="${field}"]`);
+  return btn ? btn.classList.contains('active') : false;
+}
+
+function getSubject() {
+  return {
+    address: getStr('subj-address'),
+    sqft: getVal('subj-sqft'),
+    beds: getVal('subj-beds'),
+    fullBath: getVal('subj-fullbath'),
+    halfBath: getVal('subj-halfbath'),
+    year: getVal('subj-year'),
+    lot: getVal('subj-lot'),
+    stories: parseFloat(getStr('subj-stories')) || 2,
+    style: getStr('subj-style'),
+    condition: getVal('subj-condition'),
+    targetCondition: getVal('subj-target-condition'),
+    garage: parseInt(getToggle('subj-garage')) || 0,
+    basement: getToggle('subj-basement'),
+    fireplace: parseInt(getToggle('subj-fireplace')) || 0,
+    centralAir: isToggleActive('subj-central-air'),
+  };
+}
+
+function getComp(idx) {
+  const price = getVal(`c${idx}-price`);
+  if (!price) return null;
+  return {
+    idx,
+    address: getStr(`c${idx}-address`),
+    price,
+    date: getStr(`c${idx}-date`),
+    dist: getVal(`c${idx}-dist`),
+    sqft: getVal(`c${idx}-sqft`),
+    beds: getVal(`c${idx}-beds`),
+    fullBath: getVal(`c${idx}-fullbath`),
+    halfBath: getVal(`c${idx}-halfbath`),
+    year: getVal(`c${idx}-year`),
+    lot: getVal(`c${idx}-lot`),
+    condition: getVal(`c${idx}-condition`),
+    reno: getStr(`c${idx}-reno`) || 'updated',
+    renoNotes: getStr(`c${idx}-reno-notes`),
+    garage: parseInt(getToggle(`c${idx}-garage`)) || 0,
+    basement: getToggle(`c${idx}-basement`),
+    fireplace: parseInt(getToggle(`c${idx}-fireplace`)) || 0,
+    centralAir: isToggleActive(`c${idx}-central-air`),
+  };
+}
+
+function getSettings() {
+  return {
+    sqft: getVal('adj-sqft'),
+    bed: getVal('adj-bed'),
+    fullBath: getVal('adj-fullbath'),
+    halfBath: getVal('adj-halfbath'),
+    garage: getVal('adj-garage'),
+    finBsmt: getVal('adj-finbsmt'),
+    cond: getVal('adj-cond'),
+    age: getVal('adj-age'),
+    appreciation: getVal('adj-appreciation') / 100,
+    lot: getVal('adj-lot'),
+    fireplace: getVal('adj-fireplace'),
+    air: getVal('adj-air'),
+  };
+}
+
+// ============ APPRAISAL ADJUSTMENTS ============
+function basementValue(type, settings) {
+  if (type === 'finished') return settings.finBsmt;
+  if (type === 'partial') return settings.finBsmt * 0.5;
+  if (type === 'unfinished') return settings.finBsmt * 0.15;
+  return 0;
+}
+
+function calcAdjustments(subject, comp, settings) {
+  const adj = {};
+  const target = subject.targetCondition;
+
+  // Use target condition (after repair) for comparison, NOT current condition
+  // We compare: subject AFTER REPAIR vs comp AS SOLD
+
+  // Sq Ft: subject has more → positive adjustment to comp
+  adj.sqft = (subject.sqft && comp.sqft) ? (subject.sqft - comp.sqft) * settings.sqft : 0;
+
+  // Bedrooms
+  adj.beds = (subject.beds && comp.beds) ? (subject.beds - comp.beds) * settings.bed : 0;
+
+  // Bathrooms
+  adj.fullBath = (subject.fullBath && comp.fullBath) ? (subject.fullBath - comp.fullBath) * settings.fullBath : 0;
+  adj.halfBath = (subject.halfBath !== undefined && comp.halfBath !== undefined) ? (subject.halfBath - comp.halfBath) * settings.halfBath : 0;
+
+  // Year built (newer = more valuable)
+  adj.age = (subject.year && comp.year) ? (subject.year - comp.year) * settings.age : 0;
+
+  // Lot size
+  adj.lot = (subject.lot && comp.lot) ? (subject.lot - comp.lot) * settings.lot : 0;
+
+  // Condition: compare subject's TARGET condition to comp's sold condition
+  adj.condition = (target && comp.condition) ? (target - comp.condition) * settings.cond : 0;
+
+  // Garage
+  adj.garage = (subject.garage - comp.garage) * settings.garage;
+
+  // Basement
+  adj.basement = basementValue(subject.basement, settings) - basementValue(comp.basement, settings);
+
+  // Fireplace
+  adj.fireplace = (subject.fireplace - comp.fireplace) * settings.fireplace;
+
+  // Central Air
+  adj.centralAir = ((subject.centralAir ? 1 : 0) - (comp.centralAir ? 1 : 0)) * settings.air;
+
+  // Time adjustment (market appreciation from sale date to today)
+  adj.time = 0;
+  if (comp.date) {
+    const saleDate = new Date(comp.date);
+    const today = new Date();
+    const months = (today - saleDate) / (1000 * 60 * 60 * 24 * 30.44);
+    adj.time = Math.round(comp.price * settings.appreciation * months);
+  }
+
+  // Totals
+  adj.net = Object.values(adj).reduce((s, v) => s + v, 0);
+  adj.gross = Object.values(adj).reduce((s, v) => s + Math.abs(v), 0);
+  adj.adjustedPrice = comp.price + adj.net;
+  adj.netPct = comp.price ? Math.abs(adj.net / comp.price * 100) : 0;
+  adj.grossPct = comp.price ? (adj.gross / comp.price * 100) : 0;
+
+  return adj;
+}
+
+// ============ CALCULATE ARV ============
+function calculateARV() {
+  const subject = getSubject();
+  const settings = getSettings();
+
+  // Gather filled comps
+  const filledComps = [];
+  for (let i = 1; i <= compCount; i++) {
+    const c = getComp(i);
+    if (c) filledComps.push(c);
+  }
+
+  if (filledComps.length < 2) {
+    showToast('Enter at least 2 comps (3+ recommended)');
+    return;
+  }
+
+  // Calculate adjustments for each comp
+  const results = filledComps.map(comp => {
+    const adj = calcAdjustments(subject, comp, settings);
+    return { comp, adj };
+  });
+
+  // Sort by adjusted price descending for "max" ARV
+  results.sort((a, b) => b.adj.adjustedPrice - a.adj.adjustedPrice);
+
+  // Calculate weighted ARV (weight by proximity and recency)
+  let totalWeight = 0;
+  let weightedSum = 0;
+  results.forEach(r => {
+    let w = 1;
+    // Renovation status weight: fully renovated comps are the BEST indicator of ARV
+    const reno = r.comp.reno || 'updated';
+    w *= (reno === 'full' ? 1.8 : reno === 'partial' ? 1.3 : reno === 'updated' ? 1.0 : 0.6);
+    // Proximity weight: closer = higher weight
+    if (r.comp.dist) w *= (r.comp.dist <= 0.5 ? 1.5 : r.comp.dist <= 1 ? 1.2 : r.comp.dist <= 2 ? 1.0 : 0.7);
+    // Recency weight
+    if (r.comp.date) {
+      const months = (new Date() - new Date(r.comp.date)) / (1000*60*60*24*30.44);
+      w *= (months <= 3 ? 1.4 : months <= 6 ? 1.2 : months <= 9 ? 1.0 : 0.8);
+    }
+    // Lower adjustment = more reliable comp
+    w *= (r.adj.grossPct <= 15 ? 1.3 : r.adj.grossPct <= 25 ? 1.0 : 0.6);
+    r.weight = w;
+    totalWeight += w;
+    weightedSum += r.adj.adjustedPrice * w;
+  });
+  const weightedARV = totalWeight ? Math.round(weightedSum / totalWeight) : 0;
+
+  // Max ARV: highest adjusted comp
+  const maxARV = Math.round(results[0].adj.adjustedPrice);
+
+  // Reconciled ARV: appraiser-style — favor comps with lower adjustments, weight toward upper range
+  // Use trimmed weighted mean: exclude worst comp if >4 comps
+  let reconResults = [...results];
+  if (reconResults.length > 4) {
+    reconResults.sort((a, b) => a.adj.grossPct - b.adj.grossPct);
+    reconResults = reconResults.slice(0, -1); // drop worst
+  }
+  let reconSum = 0, reconW = 0;
+  reconResults.forEach(r => {
+    const w = r.weight * (r.adj.grossPct <= 15 ? 1.5 : 1);
+    reconW += w;
+    reconSum += r.adj.adjustedPrice * w;
+  });
+  const reconARV = reconW ? Math.round(reconSum / reconW) : weightedARV;
+
+  // Per-sqft
+  const arvPerSqft = subject.sqft ? Math.round(reconARV / subject.sqft) : 0;
+
+  lastResults = { subject, results, maxARV, weightedARV, reconARV, arvPerSqft, settings };
+
+  // Render
+  renderAdjustmentTable(subject, results, settings);
+  renderARVResults(maxARV, weightedARV, reconARV, arvPerSqft, results);
+  renderRehabScope(subject);
+  updateMAO();
+
+  // Show result sections
+  ['adj-section','arv-section','rehab-section','mao-section'].forEach(id => {
+    document.getElementById(id).classList.remove('hidden');
+  });
+
+  // Scroll to results
+  document.getElementById('arv-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============ RENDER ADJUSTMENT TABLE ============
+function renderAdjustmentTable(subject, results, settings) {
+  const labels = {
+    time: 'Time (Market)', sqft: 'Sq Footage', beds: 'Bedrooms', fullBath: 'Full Baths',
+    halfBath: 'Half Baths', age: 'Age/Year Built', lot: 'Lot Size', condition: 'Condition',
+    garage: 'Garage', basement: 'Basement', fireplace: 'Fireplace', centralAir: 'Central Air'
+  };
+  const fields = Object.keys(labels);
+
+  let html = '<thead><tr><th>Adjustment</th><th>Subject</th>';
+  results.forEach((r, i) => { html += `<th>Comp #${r.comp.idx}</th>`; });
+  html += '</tr></thead><tbody>';
+
+  // Sale Price row
+  html += '<tr><td>Sale Price</td><td>—</td>';
+  results.forEach(r => { html += `<td>${fmt(r.comp.price)}</td>`; });
+  html += '</tr>';
+
+  // Renovation Status row
+  const renoLabels = { full: 'Fully Renovated', partial: 'Partial Reno', updated: 'Updated', original: 'Original' };
+  const renoColors = { full: 'badge-success', partial: 'badge-warning', updated: '', original: 'badge-danger' };
+  html += '<tr><td>Renovation Status</td><td>After Repair</td>';
+  results.forEach(r => {
+    const reno = r.comp.reno || 'updated';
+    const cls = renoColors[reno] || '';
+    html += `<td><span class="badge ${cls}">${renoLabels[reno]}</span></td>`;
+  });
+  html += '</tr>';
+
+  // Subject values
+  const subjVals = {
+    time: '—', sqft: subject.sqft || '—', beds: subject.beds || '—',
+    fullBath: subject.fullBath || '—', halfBath: subject.halfBath || '—',
+    age: subject.year || '—', lot: subject.lot ? subject.lot.toLocaleString() : '—',
+    condition: subject.targetCondition + '/5', garage: subject.garage + '-car',
+    basement: subject.basement, fireplace: subject.fireplace, centralAir: subject.centralAir ? 'Yes' : 'No'
+  };
+
+  fields.forEach(f => {
+    html += `<tr><td>${labels[f]}</td><td>${subjVals[f]}</td>`;
+    results.forEach(r => {
+      const val = r.adj[f];
+      const cls = val > 0 ? 'adj-positive' : val < 0 ? 'adj-negative' : '';
+      html += `<td class="${cls}">${val ? fmtAdj(val) : '—'}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  // Net Adjustment
+  html += '<tr class="total-row"><td>Net Adjustment</td><td></td>';
+  results.forEach(r => {
+    const cls = r.adj.netPct > 15 ? 'adj-warning' : '';
+    html += `<td class="${cls}">${fmtAdj(r.adj.net)} (${r.adj.netPct.toFixed(1)}%)</td>`;
+  });
+  html += '</tr>';
+
+  // Gross Adjustment
+  html += '<tr class="total-row"><td>Gross Adjustment</td><td></td>';
+  results.forEach(r => {
+    const cls = r.adj.grossPct > 25 ? 'adj-warning' : '';
+    html += `<td class="${cls}">${fmt(r.adj.gross)} (${r.adj.grossPct.toFixed(1)}%)</td>`;
+  });
+  html += '</tr>';
+
+  // Adjusted Price
+  html += '<tr class="total-row" style="font-size:1rem"><td>Adjusted Price</td><td></td>';
+  results.forEach(r => { html += `<td><strong>${fmt(r.adj.adjustedPrice)}</strong></td>`; });
+  html += '</tr>';
+
+  html += '</tbody>';
+  document.getElementById('adj-table').innerHTML = html;
+
+  // Warnings
+  let warnings = '';
+  results.forEach(r => {
+    if (r.adj.netPct > 15) {
+      warnings += `<span class="badge badge-warning">Comp #${r.comp.idx}: Net adj ${r.adj.netPct.toFixed(1)}% exceeds 15% guideline</span> `;
+    }
+    if (r.adj.grossPct > 25) {
+      warnings += `<span class="badge badge-danger">Comp #${r.comp.idx}: Gross adj ${r.adj.grossPct.toFixed(1)}% exceeds 25% — weak comp</span> `;
+    }
+  });
+  if (results.length < 3) {
+    warnings += `<span class="badge badge-warning">Only ${results.length} comps — 3+ recommended for reliable ARV</span> `;
+  }
+  document.getElementById('adj-warnings').innerHTML = warnings ? `<div style="margin-bottom:12px">${warnings}</div>` : '';
+}
+
+// ============ RENDER ARV RESULTS ============
+function renderARVResults(maxARV, weightedARV, reconARV, arvPerSqft, results) {
+  const confidence = results.length >= 3 && results.every(r => r.adj.grossPct <= 25) ? 'High' :
+                     results.length >= 2 && results.some(r => r.adj.grossPct <= 25) ? 'Medium' : 'Low';
+  const confClass = confidence === 'High' ? 'badge-success' : confidence === 'Medium' ? 'badge-warning' : 'badge-danger';
+
+  document.getElementById('arv-results').innerHTML = `
+    <div class="result-card highlight">
+      <div class="label">Max ARV</div>
+      <div class="value">${fmt(maxARV)}</div>
+      <div class="sub">Highest adjusted comp</div>
+    </div>
+    <div class="result-card">
+      <div class="label">Weighted ARV</div>
+      <div class="value">${fmt(weightedARV)}</div>
+      <div class="sub">Proximity + recency weighted</div>
+    </div>
+    <div class="result-card" style="border-color:var(--success)">
+      <div class="label">Reconciled ARV</div>
+      <div class="value" style="color:var(--success)">${fmt(reconARV)}</div>
+      <div class="sub">Appraiser-style reconciliation</div>
+    </div>
+    <div class="result-card">
+      <div class="label">$/Sq Ft</div>
+      <div class="value" style="font-size:1.4rem">${fmt(arvPerSqft)}</div>
+      <div class="sub">After repair</div>
+    </div>`;
+
+  // Renovation analysis
+  const fullRenoComps = results.filter(r => r.comp.reno === 'full');
+  const nonRenoComps = results.filter(r => r.comp.reno === 'original' || r.comp.reno === 'updated');
+  let renoNote = '';
+  if (fullRenoComps.length > 0) {
+    const avgReno = Math.round(fullRenoComps.reduce((s,r) => s + r.adj.adjustedPrice, 0) / fullRenoComps.length);
+    renoNote = `<br><strong>Fully renovated comps (${fullRenoComps.length}):</strong> Avg adjusted value ${fmt(avgReno)} — these are weighted 1.8x in the ARV since they best represent what the subject will be worth after rehab.`;
+    if (fullRenoComps.length > 0 && fullRenoComps[0].comp.renoNotes) {
+      renoNote += ` Top reno comp details: "${fullRenoComps[0].comp.renoNotes}"`;
+    }
+  } else {
+    renoNote = '<br><span class="badge badge-warning">No fully renovated comps</span> — Consider finding at least one recently renovated comp for a more reliable ARV. Non-renovated comps require larger condition adjustments which reduce confidence.';
+  }
+
+  document.getElementById('arv-notes').innerHTML = `
+    <p><span class="badge ${confClass}">${confidence} Confidence</span>
+    Based on ${results.length} comparable${results.length > 1 ? 's' : ''}.
+    Reconciled value favors fully renovated comps, lower adjustment percentages, and closer proximity.
+    ${confidence === 'Low' ? '<strong>Consider finding better comps — high adjustments reduce reliability.</strong>' : ''}
+    ${renoNote}</p>`;
+}
+
+// ============ RENDER REHAB SCOPE ============
+function renderRehabScope(subject) {
+  const condGap = subject.targetCondition - subject.condition;
+  let html = '';
+
+  Object.entries(REHAB_ITEMS).forEach(([category, items]) => {
+    html += `<div class="rehab-category"><h4>${category}</h4>`;
+    items.forEach((item, i) => {
+      const checked = item.condGap > 0 && condGap >= item.condGap;
+      let cost = item.cost;
+      // Contingency: auto-calculate later
+      const isContingency = item.name.includes('Contingency');
+      const id = `rehab-${category.replace(/[^a-z]/gi,'')}-${i}`;
+      html += `<div class="rehab-item">
+        <input type="checkbox" id="${id}" ${checked && !isContingency ? 'checked' : ''} ${isContingency ? 'checked disabled' : ''} onchange="updateRehabTotal()">
+        <span class="item-name">${item.name}</span>
+        <input type="number" class="item-cost" id="${id}-cost" value="${isContingency ? 0 : cost}" onchange="updateRehabTotal()" ${isContingency ? 'readonly' : ''}>
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  document.getElementById('rehab-items').innerHTML = html;
+  updateRehabTotal();
+}
+
+function updateRehabTotal() {
+  let total = 0;
+  let contingencyInput = null;
+  document.querySelectorAll('.rehab-item').forEach(item => {
+    const cb = item.querySelector('input[type="checkbox"]');
+    const cost = item.querySelector('.item-cost');
+    const name = item.querySelector('.item-name');
+    if (name && name.textContent.includes('Contingency')) {
+      contingencyInput = cost;
+      return;
+    }
+    if (cb && cb.checked && cost) {
+      total += parseFloat(cost.value) || 0;
+    }
+  });
+  // Set contingency to 10% of total
+  if (contingencyInput) {
+    contingencyInput.value = Math.round(total * 0.1);
+    total += Math.round(total * 0.1);
+  }
+  document.getElementById('rehab-total-val').textContent = fmt(total);
+  window._rehabTotal = total;
+  if (lastResults) updateMAO();
+}
+
+// ============ MAO CALCULATOR ============
+function updateMAO() {
+  if (!lastResults) return;
+  const arv = lastResults.reconARV;
+  const pct = getVal('mao-pct') / 100;
+  const rehab = window._rehabTotal || 0;
+  const months = getVal('mao-months');
+  const monthly = getVal('mao-monthly');
+  const closingPct = getVal('mao-closing-pct') / 100;
+
+  const discounted = Math.round(arv * pct);
+  const holding = months * monthly;
+  const closing = Math.round(arv * closingPct);
+  const mao = discounted - rehab - holding - closing;
+  const profit = arv - mao - rehab - holding - closing;
+
+  document.getElementById('mao-arv').textContent = fmt(arv);
+  document.getElementById('mao-discounted').textContent = fmt(discounted);
+  document.getElementById('mao-rehab').textContent = fmt(rehab);
+  document.getElementById('mao-holding').textContent = fmt(holding);
+  document.getElementById('mao-closing').textContent = fmt(closing);
+  document.getElementById('mao-final').textContent = fmt(mao);
+  document.getElementById('mao-profit').textContent = fmt(profit);
+}
+
+// ============ SHARE & EXPORT ============
+function shareAnalysis() {
+  const data = collectAllData();
+  const json = JSON.stringify(data);
+  const encoded = btoa(unescape(encodeURIComponent(json)));
+  const url = window.location.origin + window.location.pathname + '#data=' + encoded;
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => showToast('Share link copied to clipboard!'));
+  } else {
+    prompt('Copy this share link:', url);
+  }
+}
+
+function collectAllData() {
+  const subject = getSubject();
+  const comps = [];
+  for (let i = 1; i <= compCount; i++) {
+    const c = getComp(i);
+    if (c) comps.push(c);
+  }
+  return {
+    subject, comps,
+    settings: {
+      sqft: getVal('adj-sqft'), bed: getVal('adj-bed'),
+      fullBath: getVal('adj-fullbath'), halfBath: getVal('adj-halfbath'),
+      garage: getVal('adj-garage'), finBsmt: getVal('adj-finbsmt'),
+      cond: getVal('adj-cond'), age: getVal('adj-age'),
+      appreciation: getVal('adj-appreciation'), lot: getVal('adj-lot'),
+      fireplace: getVal('adj-fireplace'), air: getVal('adj-air'),
+    },
+    mao: {
+      pct: getVal('mao-pct'), months: getVal('mao-months'),
+      monthly: getVal('mao-monthly'), closingPct: getVal('mao-closing-pct'),
+    }
+  };
+}
+
+function loadFromURL() {
+  const hash = window.location.hash;
+  if (!hash.startsWith('#data=')) return;
+  try {
+    const json = decodeURIComponent(escape(atob(hash.substring(6))));
+    const data = JSON.parse(json);
+    loadData(data);
+    showToast('Shared analysis loaded!');
+  } catch (e) {
+    console.error('Failed to load shared data', e);
+  }
+}
+
+function loadData(data) {
+  if (!data) return;
+  const s = data.subject;
+  if (s) {
+    if (s.address) document.getElementById('subj-address').value = s.address;
+    if (s.sqft) document.getElementById('subj-sqft').value = s.sqft;
+    if (s.beds) document.getElementById('subj-beds').value = s.beds;
+    if (s.fullBath) document.getElementById('subj-fullbath').value = s.fullBath;
+    if (s.halfBath) document.getElementById('subj-halfbath').value = s.halfBath;
+    if (s.year) document.getElementById('subj-year').value = s.year;
+    if (s.lot) document.getElementById('subj-lot').value = s.lot;
+    if (s.stories) document.getElementById('subj-stories').value = s.stories;
+    if (s.style) document.getElementById('subj-style').value = s.style;
+    if (s.condition) document.getElementById('subj-condition').value = s.condition;
+    if (s.targetCondition) document.getElementById('subj-target-condition').value = s.targetCondition;
+    // Toggles
+    setToggle('subj-garage', s.garage+'', ['0','1','2','3'], ['No Garage','1-Car Garage','2-Car Garage','3-Car Garage']);
+    setToggle('subj-basement', s.basement, ['none','unfinished','partial','finished'], ['No Basement','Unfinished Basement','Partial Basement','Finished Basement']);
+    setToggle('subj-fireplace', s.fireplace+'', ['0','1','2'], ['No Fireplace','1 Fireplace','2 Fireplaces']);
+    if (s.centralAir) { const b = document.querySelector('[data-field="subj-central-air"]'); if(b) b.classList.add('active'); }
+  }
+  if (data.comps) {
+    while (compCount < data.comps.length) addComp();
+    data.comps.forEach((c, i) => {
+      const idx = c.idx || (i + 1);
+      setInputVal(`c${idx}-address`, c.address);
+      setInputVal(`c${idx}-price`, c.price);
+      setInputVal(`c${idx}-date`, c.date);
+      setInputVal(`c${idx}-dist`, c.dist);
+      setInputVal(`c${idx}-sqft`, c.sqft);
+      setInputVal(`c${idx}-beds`, c.beds);
+      setInputVal(`c${idx}-fullbath`, c.fullBath);
+      setInputVal(`c${idx}-halfbath`, c.halfBath);
+      setInputVal(`c${idx}-year`, c.year);
+      setInputVal(`c${idx}-lot`, c.lot);
+      if (c.condition) document.getElementById(`c${idx}-condition`).value = c.condition;
+      if (c.reno) document.getElementById(`c${idx}-reno`).value = c.reno;
+      if (c.renoNotes) document.getElementById(`c${idx}-reno-notes`).value = c.renoNotes;
+      setToggle(`c${idx}-garage`, c.garage+'', ['0','1','2','3'], ['No Garage','1-Car','2-Car','3-Car']);
+      setToggle(`c${idx}-basement`, c.basement, ['none','unfinished','partial','finished'], ['No Bsmt','Unfin Bsmt','Partial Bsmt','Fin Bsmt']);
+      setToggle(`c${idx}-fireplace`, c.fireplace+'', ['0','1','2'], ['No FP','1 FP','2 FP']);
+      if (c.centralAir) { const b = document.querySelector(`[data-field="c${idx}-central-air"]`); if(b) b.classList.add('active'); }
+      updateCompStatus(idx);
+    });
+  }
+  if (data.settings) {
+    setInputVal('adj-sqft', data.settings.sqft);
+    setInputVal('adj-bed', data.settings.bed);
+    setInputVal('adj-fullbath', data.settings.fullBath);
+    setInputVal('adj-halfbath', data.settings.halfBath);
+    setInputVal('adj-garage', data.settings.garage);
+    setInputVal('adj-finbsmt', data.settings.finBsmt);
+    setInputVal('adj-cond', data.settings.cond);
+    setInputVal('adj-age', data.settings.age);
+    setInputVal('adj-appreciation', data.settings.appreciation);
+    setInputVal('adj-lot', data.settings.lot);
+    setInputVal('adj-fireplace', data.settings.fireplace);
+    setInputVal('adj-air', data.settings.air);
+  }
+  if (data.mao) {
+    setInputVal('mao-pct', data.mao.pct);
+    setInputVal('mao-months', data.mao.months);
+    setInputVal('mao-monthly', data.mao.monthly);
+    setInputVal('mao-closing-pct', data.mao.closingPct);
+  }
+  // Auto-calculate if we have comps
+  if (data.comps && data.comps.length >= 2) {
+    setTimeout(() => calculateARV(), 100);
+  }
+}
+
+function setInputVal(id, val) {
+  const el = document.getElementById(id);
+  if (el && val !== undefined && val !== null && val !== 0 && val !== '') el.value = val;
+}
+
+function setToggle(field, val, values, labels) {
+  const btn = document.querySelector(`[data-field="${field}"]`);
+  if (!btn || !val) return;
+  const idx = values.indexOf(val);
+  if (idx >= 0) {
+    btn.dataset.val = values[idx];
+    btn.textContent = labels[idx];
+    btn.classList.toggle('active', idx > 0);
+  }
+}
+
+function copyReport() {
+  if (!lastResults) { showToast('Calculate ARV first'); return; }
+  const r = lastResults;
+  const s = r.subject;
+  let text = `ARV ANALYSIS — ${s.address || 'Subject Property'}\n`;
+  text += `${'='.repeat(50)}\n\n`;
+  text += `Subject: ${s.sqft} sqft, ${s.beds}BR/${s.fullBath}BA, Built ${s.year}\n`;
+  text += `Current Condition: ${s.condition}/5 → Target: ${s.targetCondition}/5\n\n`;
+  text += `COMPARABLES:\n`;
+  const renoLabel = {full:'FULLY RENOVATED', partial:'Partial Reno', updated:'Updated', original:'Original'};
+  r.results.forEach(({comp, adj}) => {
+    text += `  Comp #${comp.idx}: ${comp.address || 'N/A'}\n`;
+    text += `    Sale: ${fmt(comp.price)} | Adjusted: ${fmt(adj.adjustedPrice)}\n`;
+    text += `    ${comp.sqft}sf, ${comp.beds}BR/${comp.fullBath}BA | Net Adj: ${adj.netPct.toFixed(1)}%\n`;
+    text += `    Reno Status: ${renoLabel[comp.reno] || 'N/A'}${comp.renoNotes ? ' — ' + comp.renoNotes : ''}\n\n`;
+  });
+  text += `AFTER REPAIR VALUE:\n`;
+  text += `  Max ARV:        ${fmt(r.maxARV)}\n`;
+  text += `  Weighted ARV:   ${fmt(r.weightedARV)}\n`;
+  text += `  Reconciled ARV: ${fmt(r.reconARV)}\n`;
+  text += `  $/SqFt:         ${fmt(r.arvPerSqft)}\n\n`;
+  text += `Rehab Estimate: ${document.getElementById('rehab-total-val').textContent}\n`;
+  text += `Max Offer:      ${document.getElementById('mao-final').textContent}\n`;
+  text += `Est. Profit:    ${document.getElementById('mao-profit').textContent}\n`;
+
+  navigator.clipboard.writeText(text).then(() => showToast('Report copied to clipboard!'));
+}
+
+function printReport() { window.print(); }
+
+function resetAll() {
+  if (!confirm('Start a new analysis? Current data will be cleared.')) return;
+  window.location.hash = '';
+  window.location.reload();
+}
+</script>
+</body>
+</html>
